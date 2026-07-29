@@ -8,11 +8,20 @@ pasted into every call:
 
 Commands
 --------
+  build   <manifest.json>                     whole carousel: fetch, gate, letter, sheet
+  upload  <manifest.json>                     PUT finished slides to presigned URLs
   letter  <art.png> <out.webp> "LINE ONE|LINE TWO" [badge]
   card    <out.webp> "HEADING" "rule one|rule two|..."
   brand   <img> [img ...]                     palette gate — PASS/FAIL, numeric
   sheet   <out.png>  <img> [img ...]          contact sheet for inspection
   probe   <img> [img ...]                     per-image stats, no transfer
+
+`build` and `upload` exist because a day of five carousels was costing roughly
+forty tool round-trips — a curl and a composite and a check per slide, each one
+a chance to lose the sandbox between calls (it is discarded seconds after a
+command returns). Both take a manifest and do the whole batch in one command,
+so a day costs four calls instead of forty. Art generation stays outside: it
+goes through the Higgsfield MCP, which the sandbox cannot reach.
 
 `brand` is the gate that never existed. The 2026-07-29 journal entry says a
 style guide is not implemented until a rendered artefact has been diffed
@@ -31,6 +40,8 @@ PNG, shrinks it until it fits the budget, and prints an md5 so a bad copy is
 detectable instead of silently trusted. Check `brand` first — it is free.
 """
 import hashlib
+import json
+import os
 import subprocess
 import sys
 
@@ -234,6 +245,64 @@ def probe(*paths):
         print(f"{p} {w}x{h} top-third mean={mean:.0f} stddev={var ** 0.5:.0f}")
 
 
+def build(manifest_path):
+    """One carousel, end to end. Manifest:
+
+        {"slug": "scan-photo-rules",
+         "slides": [
+           {"art": "https://...png", "headline": "ONE WALL|FLAT LIGHT", "badge": "2"},
+           {"card": true, "heading": "SCREENSHOT THIS.", "rules": "a|b|c"}
+         ]}
+
+    Off-brand art fails the gate and the slide is skipped rather than lettered,
+    so a bad batch surfaces as a short slide list instead of a published post.
+    """
+    spec = json.load(open(manifest_path))
+    slug = spec["slug"]
+    os.makedirs(slug, exist_ok=True)
+
+    finished, rejected = [], []
+    for i, s in enumerate(spec["slides"], 1):
+        out = f"{slug}/slide-{i:02d}.webp"
+        if s.get("card"):
+            card(out, s["heading"], s["rules"])
+            finished.append(out)
+            continue
+
+        art = f"{slug}/art-{i:02d}.png"
+        subprocess.run(["curl", "-sfL", "-o", art, s["art"]], check=True)
+        try:
+            brand(art)
+        except SystemExit as e:
+            if e.code:
+                rejected.append((out, s.get("headline", "")))
+                continue
+        letter(art, out, s["headline"], s.get("badge"))
+        finished.append(out)
+
+    print(f"\n{len(finished)}/{len(spec['slides'])} slides built for {slug}")
+    for out, head in rejected:
+        print(f"REJECTED {out} ({head.replace('|', ' / ')}) — art failed the brand gate")
+    if finished:
+        sheet(f"{slug}/sheet.png", *finished)
+
+
+def upload(manifest_path):
+    """PUT finished slides to presigned URLs. Manifest is a list of
+    {"file", "url", "content_type"} — normally straight from media_upload."""
+    for item in json.load(open(manifest_path)):
+        r = subprocess.run(
+            ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "-X", "PUT",
+             "-H", f"Content-Type: {item.get('content_type', 'image/webp')}",
+             "--data-binary", f"@{item['file']}", item["url"]],
+            capture_output=True, text=True,
+        )
+        print(f"{r.stdout} {item['file']}")
+
+
 if __name__ == "__main__":
     cmd, args = sys.argv[1], sys.argv[2:]
-    {"letter": letter, "card": card, "brand": brand, "sheet": sheet, "probe": probe}[cmd](*args)
+    {
+        "build": build, "upload": upload, "letter": letter, "card": card,
+        "brand": brand, "sheet": sheet, "probe": probe,
+    }[cmd](*args)
