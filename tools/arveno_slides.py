@@ -10,15 +10,25 @@ Commands
 --------
   letter  <art.png> <out.webp> "LINE ONE|LINE TWO" [badge]
   card    <out.webp> "HEADING" "rule one|rule two|..."
+  brand   <img> [img ...]                     palette gate — PASS/FAIL, numeric
   sheet   <out.png>  <img> [img ...]          contact sheet for inspection
   probe   <img> [img ...]                     per-image stats, no transfer
 
-`sheet` is the eyes-on step. Both Higgsfield CDNs are blocked from the build
-sandbox, so a slide reaches a reviewer as base64 hand-carried out of tool
-output. That transfer is lossy above roughly 5 KB, and lossier still for JPEG,
-whose base64 carries long runs of one repeated character. So `sheet` emits a
-colour-quantized PNG, shrinks it until it fits the budget, and prints an md5 so
-a bad copy is detectable instead of silently trusted.
+`brand` is the gate that never existed. The 2026-07-29 journal entry says a
+style guide is not implemented until a rendered artefact has been diffed
+against it, and the diff nobody could do by eye is trivial by number: quantize
+the frame and check how much of it lands on the brand palette. It caught a
+character sheet that was 70% cream and one terracotta — no ink, no orange, no
+amber — which a thumbnail glance would have waved through as "flat and warm".
+Numbers also survive the transfer described below, and thumbnails often don't.
+
+`sheet` is the eyes-on step, for the things a palette cannot see: figure count,
+anatomy, stray text. Both Higgsfield CDNs are blocked from the build sandbox,
+so a slide reaches a reviewer as base64 hand-carried out of tool output. That
+transfer is lossy above roughly 3 KB, and lossier still for JPEG, whose base64
+carries long runs of one repeated character. So `sheet` emits a colour-quantized
+PNG, shrinks it until it fits the budget, and prints an md5 so a bad copy is
+detectable instead of silently trusted. Check `brand` first — it is free.
 """
 import hashlib
 import subprocess
@@ -35,7 +45,20 @@ FONT_PATH = "/usr/share/fonts/truetype/higgsfield/Metropolis-ExtraBold.ttf"
 BAND = 0.30  # scrim height as a fraction of the frame
 FADE = 0.07  # gradient tail below the scrim, same units
 SIDE = 0.08  # horizontal margin
-SHEET_BUDGET = 4800  # bytes; above this the base64 transfer starts losing data
+SHEET_BUDGET = 2800  # bytes; above this the base64 transfer starts losing data
+
+# The Bright Riso-Flat palette. A slide that lands little of its area on these
+# is off-brand however pleasant it looks on its own.
+BRAND = {
+    "orange": (0xFF, 0x7A, 0x2F),
+    "amber": (0xFF, 0xC2, 0x4B),
+    "coral": (0xFF, 0x4D, 0x6D),
+    "ink": (0x23, 0x1A, 0x3E),
+    "cream": (0xFF, 0xF6, 0xEA),
+}
+BRAND_TOLERANCE = 60  # euclidean distance in RGB that still counts as on-palette
+BRAND_MIN_COVERAGE = 0.70  # of the frame
+BRAND_MIN_INK_ORANGE = 0.25  # ink + orange + coral together: the contrast engine
 
 
 def font(size):
@@ -129,6 +152,45 @@ def card(out_path, heading, rules, size=(928, 1152)):
     save(im, out_path)
 
 
+def brand(*paths):
+    """Diff a rendered frame against the palette. Exits non-zero on a fail so a
+    batch script stops instead of shipping off-brand art."""
+    failed = False
+    for p in paths:
+        im = Image.open(p).convert("RGB")
+        im.thumbnail((240, 240))
+        q = im.quantize(colors=12, method=Image.MEDIANCUT)
+        pal, counts = q.getpalette(), q.getcolors()
+        total = sum(c for c, _ in counts)
+
+        share = dict.fromkeys(BRAND, 0.0)
+        off = 0.0
+        for count, i in counts:
+            rgb = tuple(pal[i * 3 : i * 3 + 3])
+            name, dist = min(
+                ((n, sum((a - b) ** 2 for a, b in zip(rgb, v)) ** 0.5) for n, v in BRAND.items()),
+                key=lambda t: t[1],
+            )
+            if dist <= BRAND_TOLERANCE:
+                share[name] += count / total
+            else:
+                off += count / total
+
+        covered = 1 - off
+        punch = share["ink"] + share["orange"] + share["coral"]
+        ok = covered >= BRAND_MIN_COVERAGE and punch >= BRAND_MIN_INK_ORANGE
+        failed |= not ok
+        breakdown = "  ".join(f"{n}={share[n]:.0%}" for n in BRAND)
+        print(f"{'PASS' if ok else 'FAIL'} {p}  on-palette={covered:.0%}  punch={punch:.0%}")
+        print(f"       {breakdown}  off-palette={off:.0%}")
+        if not ok:
+            if covered < BRAND_MIN_COVERAGE:
+                print(f"       coverage below {BRAND_MIN_COVERAGE:.0%} — colours drifted off the guide")
+            if punch < BRAND_MIN_INK_ORANGE:
+                print(f"       ink+orange+coral below {BRAND_MIN_INK_ORANGE:.0%} — washed out, no contrast")
+    sys.exit(1 if failed else 0)
+
+
 def sheet(out_path, *paths):
     """Contact sheet sized to survive a hand-carried base64 transfer."""
     n = len(paths)
@@ -174,4 +236,4 @@ def probe(*paths):
 
 if __name__ == "__main__":
     cmd, args = sys.argv[1], sys.argv[2:]
-    {"letter": letter, "card": card, "sheet": sheet, "probe": probe}[cmd](*args)
+    {"letter": letter, "card": card, "brand": brand, "sheet": sheet, "probe": probe}[cmd](*args)
