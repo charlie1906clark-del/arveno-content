@@ -40,6 +40,7 @@ PNG, shrinks it until it fits the budget, and prints an md5 so a bad copy is
 detectable instead of silently trusted. Check `brand` first — it is free.
 """
 import hashlib
+import re
 import json
 import os
 import subprocess
@@ -70,6 +71,33 @@ BRAND = {
 BRAND_TOLERANCE = 60  # euclidean distance in RGB that still counts as on-palette
 BRAND_MIN_COVERAGE = 0.70  # of the frame
 BRAND_MIN_INK_ORANGE = 0.25  # ink + orange + coral together: the contrast engine
+
+# UK ASA red flags, ported verbatim from render.mjs. That guard was the only
+# code-enforced compliance check in the system, and it lives inside a renderer
+# that now draws ONE slide per carousel — so moving narrative slides here
+# silently dropped six sevenths of every carousel out of its scope. Every
+# headline composited by `letter` is checked against these before it is drawn.
+ASA_PATTERNS = [
+    r"\b(lose|drop|shed)\s+\d+\s*(kg|lbs?|pounds?|stone)",
+    r"\bin\s+\d+\s+(days?|weeks?|months?)\b.*\b(body|fat|weight|abs|shredded|transform)",
+    r"\b(body|fat|weight|abs)\b.*\bin\s+\d+\s+(days?|weeks?|months?)\b",
+    r"\bsummer body\b",
+    r"\bbikini body\b",
+    r"\bguaranteed?\b",
+    r"\bmelt (fat|belly)",
+    r"\bspot.?reduc",
+]
+
+
+def asa_check(text, where):
+    """Refuse copy that trips an obvious UK ASA red flag. Coarse and deliberately
+    biased toward blocking — a false positive costs one reword."""
+    hits = [p for p in ASA_PATTERNS if re.search(p, text, re.I)]
+    if hits:
+        raise SystemExit(
+            f"ASA red flag in {where}: {text!r} matches {hits}. "
+            "Reword — no timeframed or guaranteed body change."
+        )
 
 
 def font(size):
@@ -112,6 +140,7 @@ def save(im, out_path):
 
 
 def letter(art_path, out_path, headline, badge=None):
+    asa_check(headline.replace("|", " "), f"headline for {out_path}")
     im = Image.open(art_path).convert("RGBA")
     w, h = im.size
     band_h, fade_h = int(h * BAND), int(h * FADE)
@@ -143,6 +172,7 @@ def letter(art_path, out_path, headline, badge=None):
 
 def card(out_path, heading, rules, size=(928, 1152)):
     """The save beat: guaranteed-legible typography, no illustration."""
+    asa_check(f"{heading} {rules}".replace("|", " "), f"card {out_path}")
     w, h = size
     im = Image.new("RGBA", size, INK + (255,))
     draw = ImageDraw.Draw(im)
