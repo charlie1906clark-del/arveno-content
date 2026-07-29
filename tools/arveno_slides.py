@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+"""Arveno slide toolkit — runs in the Higgsfield sandbox.
+
+Lives in this public repo so the sandbox can fetch it instead of having it
+pasted into every call:
+
+    curl -sO https://raw.githubusercontent.com/charlie1906clark-del/arveno-content/main/tools/arveno_slides.py
+
+Commands
+--------
+  letter  <art.png> <out.webp> "LINE ONE|LINE TWO" [badge]
+  card    <out.webp> "HEADING" "rule one|rule two|..."
+  sheet   <out.png>  <img> [img ...]          contact sheet for inspection
+  probe   <img> [img ...]                     per-image stats, no transfer
+
+`sheet` is the eyes-on step. Both Higgsfield CDNs are blocked from the build
+sandbox, so a slide reaches a reviewer as base64 hand-carried out of tool
+output. That transfer is lossy above roughly 5 KB, and lossier still for JPEG,
+whose base64 carries long runs of one repeated character. So `sheet` emits a
+colour-quantized PNG, shrinks it until it fits the budget, and prints an md5 so
+a bad copy is detectable instead of silently trusted.
+"""
+import hashlib
+import subprocess
+import sys
+
+from PIL import Image, ImageDraw, ImageFont
+
+INK = (35, 26, 62)
+CREAM = (255, 246, 234)
+AMBER = (255, 194, 75)
+
+FONT_PATH = "/usr/share/fonts/truetype/higgsfield/Metropolis-ExtraBold.ttf"
+
+BAND = 0.30  # scrim height as a fraction of the frame
+FADE = 0.07  # gradient tail below the scrim, same units
+SIDE = 0.08  # horizontal margin
+SHEET_BUDGET = 4800  # bytes; above this the base64 transfer starts losing data
+
+
+def font(size):
+    return ImageFont.truetype(FONT_PATH, int(size))
+
+
+def fit(draw, lines, box_w, box_h, gap=1.14):
+    """Largest size at which every line fits the box."""
+    for size in range(220, 20, -2):
+        f = font(size)
+        line_h = draw.textbbox((0, 0), "HXQ", font=f)[3]
+        widest = max(draw.textbbox((0, 0), ln, font=f)[2] for ln in lines)
+        if widest <= box_w and len(lines) * line_h * gap <= box_h:
+            return f, line_h
+    return font(20), 20
+
+
+def scrim(w, band_h, fade_h):
+    """Solid ink band with a soft gradient tail, so it reads as light rather
+    than as a rectangle pasted over the art."""
+    col = Image.new("L", (1, band_h + fade_h))
+    px = col.load()
+    for y in range(band_h + fade_h):
+        px[0, y] = 244 if y < band_h else int(244 * (1 - (y - band_h) / fade_h) ** 1.6)
+    layer = Image.new("RGBA", (w, band_h + fade_h), INK + (0,))
+    layer.putalpha(col.resize((w, band_h + fade_h)))
+    return layer
+
+
+def handle(draw, w, h):
+    f = font(w * 0.026)
+    draw.text((int(w * SIDE), h - int(h * 0.055)), "@ARVENO.FITNESS", font=f, fill=CREAM)
+
+
+def save(im, out_path):
+    # TikTok's photo API takes WebP/JPEG only and validates on the URL
+    # extension, never the bytes — so the suffix here is load-bearing.
+    im.convert("RGB").save(out_path, "WEBP", quality=92)
+    print(f"wrote {out_path} {im.size}")
+
+
+def letter(art_path, out_path, headline, badge=None):
+    im = Image.open(art_path).convert("RGBA")
+    w, h = im.size
+    band_h, fade_h = int(h * BAND), int(h * FADE)
+    im.alpha_composite(scrim(w, band_h, fade_h), (0, 0))
+
+    draw = ImageDraw.Draw(im)
+    lines = [ln.strip() for ln in headline.split("|") if ln.strip()]
+    pad = int(w * SIDE)
+    f, line_h = fit(draw, lines, w - 2 * pad, band_h * 0.74)
+
+    step = int(line_h * 1.14)
+    y = (band_h - step * len(lines)) // 2
+    for ln in lines:
+        tw = draw.textbbox((0, 0), ln, font=f)[2]
+        draw.text(((w - tw) // 2, y), ln, font=f, fill=CREAM)
+        y += step
+
+    if badge:
+        r = int(w * 0.055)
+        cx, cy = pad + r, band_h + int(h * 0.05)
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=AMBER)
+        bf = font(r * 1.2)
+        bb = draw.textbbox((0, 0), badge, font=bf)
+        draw.text((cx - bb[2] / 2, cy - bb[3] / 2 - r * 0.14), badge, font=bf, fill=INK)
+
+    handle(draw, w, h)
+    save(im, out_path)
+
+
+def card(out_path, heading, rules, size=(928, 1152)):
+    """The save beat: guaranteed-legible typography, no illustration."""
+    w, h = size
+    im = Image.new("RGBA", size, INK + (255,))
+    draw = ImageDraw.Draw(im)
+    pad = int(w * SIDE)
+
+    draw.text((pad, int(h * 0.10)), heading, font=font(w * 0.105), fill=CREAM)
+    draw.rectangle((pad, int(h * 0.215), pad + int(w * 0.16), int(h * 0.222)), fill=AMBER)
+
+    rf, nf = font(w * 0.052), font(w * 0.044)
+    y = int(h * 0.29)
+    for i, item in enumerate([r.strip() for r in rules.split("|") if r.strip()], 1):
+        draw.text((pad, y + int(h * 0.006)), str(i), font=nf, fill=AMBER)
+        draw.text((pad + int(w * 0.075), y), item, font=rf, fill=CREAM)
+        y += int(h * 0.105)
+
+    draw.text((pad, int(h * 0.855)), "SCREENSHOT IT.", font=font(w * 0.05), fill=AMBER)
+    handle(draw, w, h)
+    save(im, out_path)
+
+
+def sheet(out_path, *paths):
+    """Contact sheet sized to survive a hand-carried base64 transfer."""
+    n = len(paths)
+    cols = min(n, 3)
+    rows = (n + cols - 1) // cols
+
+    for cell_w, colours in ((150, 12), (124, 10), (104, 8), (88, 6)):
+        tiles = []
+        for p in paths:
+            im = Image.open(p).convert("RGB")
+            tiles.append(im.resize((cell_w, int(cell_w * im.height / im.width))))
+        cell_h = max(t.height for t in tiles)
+        grid = Image.new("RGB", (cell_w * cols, cell_h * rows), "white")
+        for i, t in enumerate(tiles):
+            grid.paste(t, ((i % cols) * cell_w, (i // cols) * cell_h))
+        grid.quantize(colors=colours, method=Image.MEDIANCUT).save(out_path, optimize=True)
+        size = len(open(out_path, "rb").read())
+        if size <= SHEET_BUDGET:
+            break
+
+    blob = open(out_path, "rb").read()
+    print(f"sheet {grid.size} {len(blob)}B md5={hashlib.md5(blob).hexdigest()}")
+    if len(blob) > SHEET_BUDGET:
+        print(f"WARNING over budget by {len(blob) - SHEET_BUDGET}B — split the batch")
+    print("BEGIN")
+    print(subprocess.run(["base64", "-w0", out_path], capture_output=True, text=True).stdout)
+    print("END")
+
+
+def probe(*paths):
+    """Cheap sanity read with no transfer: dimensions, and how much of the top
+    third is actually empty — a slide whose reserved band is busy will letter
+    badly."""
+    for p in paths:
+        im = Image.open(p).convert("L")
+        w, h = im.size
+        top = im.crop((0, 0, w, int(h * BAND)))
+        px = list(top.getdata())
+        mean = sum(px) / len(px)
+        var = sum((v - mean) ** 2 for v in px) / len(px)
+        print(f"{p} {w}x{h} top-third mean={mean:.0f} stddev={var ** 0.5:.0f}")
+
+
+if __name__ == "__main__":
+    cmd, args = sys.argv[1], sys.argv[2:]
+    {"letter": letter, "card": card, "sheet": sheet, "probe": probe}[cmd](*args)
