@@ -45,7 +45,7 @@ import os
 import subprocess
 import sys
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 INK = (35, 26, 62)
 CREAM = (255, 246, 234)
@@ -208,16 +208,26 @@ def sheet(out_path, *paths):
     cols = min(n, 3)
     rows = (n + cols - 1) // cols
 
-    for cell_w, colours in ((150, 12), (124, 10), (104, 8), (88, 6)):
+    for cell_w, colours in ((150, 12), (124, 10), (104, 8), (88, 6), (72, 5)):
         tiles = []
         for p in paths:
             im = Image.open(p).convert("RGB")
-            tiles.append(im.resize((cell_w, int(cell_w * im.height / im.width))))
+            # The riso grain is the whole point of the art and pure noise to a
+            # PNG encoder. Blur it out before quantizing or the sheet triples in
+            # size for detail nobody is inspecting at this scale.
+            tiles.append(
+                im.resize((cell_w, int(cell_w * im.height / im.width)), Image.LANCZOS)
+                .filter(ImageFilter.SMOOTH_MORE)
+            )
         cell_h = max(t.height for t in tiles)
         grid = Image.new("RGB", (cell_w * cols, cell_h * rows), "white")
         for i, t in enumerate(tiles):
             grid.paste(t, ((i % cols) * cell_w, (i // cols) * cell_h))
-        grid.quantize(colors=colours, method=Image.MEDIANCUT).save(out_path, optimize=True)
+        # Dithering scatters single pixels everywhere, which is exactly what PNG
+        # cannot compress. Flat art does not need it.
+        grid.quantize(colors=colours, method=Image.MEDIANCUT, dither=Image.Dither.NONE).save(
+            out_path, optimize=True
+        )
         size = len(open(out_path, "rb").read())
         if size <= SHEET_BUDGET:
             break
