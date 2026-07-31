@@ -1,11 +1,29 @@
 {
  "series": "the-scale-lies",
  "files": [
-  {"path": "slide-01.webp", "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/8278286a-48a1-42c7-9b42-f6cf5a203842.webp"},
-  {"path": "slide-02.webp", "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/b6b969ef-ecf4-47e6-a9ef-4ab8605d6a7e.webp"},
-  {"path": "slide-03.webp", "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/bf1b172d-6062-4d1e-a512-4411db13c442.webp"},
-  {"path": "slide-04.webp", "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/078cbf9c-6218-49f2-8237-854f465b78a2.webp"},
-  {"path": "slide-05.webp", "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/63922bf4-a3b7-49e4-80f6-f9b4987ef6ce.webp"},
-  {"path": "slide-06.webp", "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/a84bcc22-3a3e-4ea1-bc55-d878603d7184.webp"}
+  {
+   "path": "slide-01.webp",
+   "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/8278286a-48a1-42c7-9b42-f6cf5a203842.webp"
+  },
+  {
+   "path": "slide-02.webp",
+   "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/b6b969ef-ecf4-47e6-a9ef-4ab8605d6a7e.webp"
+  },
+  {
+   "path": "slide-03.webp",
+   "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/bf1b172d-6062-4d1e-a512-4411db13c442.webp"
+  },
+  {
+   "path": "slide-04.webp",
+   "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/078cbf9c-6218-49f2-8237-854f465b78a2.webp"
+  },
+  {
+   "path": "slide-05.webp",
+   "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/63922bf4-a3b7-49e4-80f6-f9b4987ef6ce.webp"
+  },
+  {
+   "path": "slide-06.webp",
+   "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/aac3e0a6-9cb8-4439-af59-d4973c94d1ef.webp"
+  }
  ]
 }
