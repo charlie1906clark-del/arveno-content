@@ -170,7 +170,7 @@ def letter(art_path, out_path, headline, badge=None):
     save(im, out_path)
 
 
-def card(out_path, heading, rules, size=(928, 1152)):
+def card(out_path, heading, rules, size=(1856, 2304)):
     """The save beat: guaranteed-legible typography, no illustration."""
     asa_check(f"{heading} {rules}".replace("|", " "), f"card {out_path}")
     w, h = size
