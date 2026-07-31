@@ -188,7 +188,12 @@ def card(out_path, heading, rules, size=(1856, 2304)):
         draw.text((pad + int(w * 0.075), y), item, font=rf, fill=CREAM)
         y += int(h * 0.105)
 
-    draw.text((pad, int(h * 0.855)), "SCREENSHOT IT.", font=font(w * 0.05), fill=AMBER)
+    # The card is the one slide that closes: every carousel's final beat carries the
+    # CTA. Added 2026-07-31 — before this, the only conversion nudge on any slide was
+    # the tiny handle, and the caption's "link in bio" that most viewers never open.
+    # Copy is deliberately claim-free (ASA): the free first scan is the real offer.
+    draw.text((pad, int(h * 0.83)), "FREE FIRST SCAN", font=font(w * 0.055), fill=AMBER)
+    draw.text((pad, int(h * 0.895)), "arveno.fitness — no card needed", font=font(w * 0.042), fill=CREAM)
     handle(draw, w, h)
     save(im, out_path)
 
