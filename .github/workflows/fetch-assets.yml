@@ -1,0 +1,49 @@
+name: fetch-assets
+# The build sandbox that composites carousel slides can reach the Higgsfield
+# CDN but not this repo; the session driving it can reach this repo but not
+# the CDN. A public-repo runner reaches both, so it is the byte-carrier:
+# push an assets-manifest.json listing CDN URLs and this workflow downloads
+# each file next to the manifest and commits the result.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "carousels/**/assets-manifest.json"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download listed assets
+        run: |
+          set -euo pipefail
+          for mf in $(git ls-files 'carousels/*/*/assets-manifest.json' 'carousels/*/assets-manifest.json'); do
+            dir=$(dirname "$mf")
+            n=$(jq '.files | length' "$mf")
+            for i in $(seq 0 $((n - 1))); do
+              path="$dir/$(jq -r ".files[$i].path" "$mf")"
+              url=$(jq -r ".files[$i].url" "$mf")
+              if [ ! -s "$path" ]; then
+                mkdir -p "$(dirname "$path")"
+                curl -sfL --retry 3 -o "$path" "$url"
+                echo "fetched $path"
+              fi
+            done
+          done
+      - name: Commit fetched assets
+        run: |
+          set -euo pipefail
+          git add -A carousels/
+          if git diff --cached --quiet; then
+            echo "nothing new"
+            exit 0
+          fi
+          git config user.name "arveno-assets-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "assets: fetch carousel renders listed in assets-manifest [skip ci]"
+          git push
