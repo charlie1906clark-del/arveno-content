@@ -1,0 +1,11 @@
+building a body composition app
+
+Building in the open, so here is the actual state of it: 49 database migrations, 677 automated tests, and a scan that still has not launched. Counted from the repository this morning rather than rounded up to sound impressive.
+
+The one thing we will not ship is an invented number. If the scan cannot measure it, it does not appear.
+
+What would you want built before you trusted an app with your body?
+
+#buildinpublic #indiehacker #bodycomposition #fitnesstech
+
+Illustrations generated with AI.

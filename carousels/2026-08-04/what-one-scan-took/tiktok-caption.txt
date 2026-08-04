@@ -1,0 +1,9 @@
+building a body composition app
+
+49 database migrations. 677 automated tests. One scan that has not launched yet. Those are counted from the repository this morning, not rounded up to sound better in a caption.
+
+What would you want built before you trusted an app with your body?
+
+#buildinpublic #indiehacker #bodycomposition #fitnesstech
+
+Illustrations generated with AI.
