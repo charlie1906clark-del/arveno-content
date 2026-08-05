@@ -1,8 +1,20 @@
 {
  "files": [
-  {"path": "slide-01.png", "url": "https://d8j0ntlcm91z4.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/hf_20260805_111403_75169291-7bd7-4294-aeee-2f0d16d4cfa5.png"},
-  {"path": "slide-02.png", "url": "https://d8j0ntlcm91z4.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/hf_20260805_111404_cef69530-0b2a-40ec-88f0-a2ccc2129e95.png"},
-  {"path": "slide-03.png", "url": "https://d8j0ntlcm91z4.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/hf_20260805_111404_195fe8d9-8265-46af-8895-7335d32aa4b3.png"},
-  {"path": "slide-04.png", "url": "https://d8j0ntlcm91z4.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/hf_20260805_111404_a100ff0c-5df6-4d94-a7ca-27ed51688e06.png"}
+  {
+   "path": "slide-01.png",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/hf_20260805_111403_75169291-7bd7-4294-aeee-2f0d16d4cfa5.png"
+  },
+  {
+   "path": "slide-02.png",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/hf_20260805_111904_66962199-37dd-407b-b0a6-5ae7ff13e3b6.png"
+  },
+  {
+   "path": "slide-03.png",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/hf_20260805_111404_195fe8d9-8265-46af-8895-7335d32aa4b3.png"
+  },
+  {
+   "path": "slide-04.png",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_39ZSjXkagwCqvg2xbGi4t2ndmyV/hf_20260805_111404_a100ff0c-5df6-4d94-a7ca-27ed51688e06.png"
+  }
  ]
 }
